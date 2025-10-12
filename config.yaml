@@ -1,0 +1,23 @@
+# Avatar Generation Settings
+avatar:
+  petpet:
+    output_dir: "./resources/generated/petpet"
+    
+  # Bonk settings
+  bonk:
+    output_dir: "./resources/generated/bonk"
+    target_size: 250
+    position:
+      x: 360
+      y: 190
+    timeout_duration: 5 # seconds
+    
+  # Explosion settings
+  explosion:
+    output_dir: "./resources/generated/explosion"
+
+  # Template paths
+  templates:
+    bonk_background: "resources/templates/bonk_template.png"
+    bonk_overlay: "resources/templates/bat_template.png"
+    explosion_overlay: "resources/templates/explosion_template.gif"
