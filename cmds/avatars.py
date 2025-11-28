@@ -19,45 +19,35 @@ class Avatars(commands.Cog, ):
         bot=self.bot,
         guild=getattr(ctx, 'guild', None)
     )
-        
         # Determine the response method
         is_app_command_ctx = isinstance(ctx, discord.ApplicationContext)
         send_response = ctx.respond if is_app_command_ctx else ctx.send
         ephemeral_arg = {'ephemeral': True} if is_app_command_ctx else {}
-
         if user is None: # In the non-zero chance user resolution fails
             await send_response("who's this user? i couldn't resolve their info. maybe try again?", **ephemeral_arg)
             return
-        
         avatar_bytes = None # Initialize to None
-
         try:
             avatar_bytes = await user.display_avatar.with_format("png").read()
-
         except discord.NotFound: # 404, most likely no avatar set
             await send_response("i can't find their avatar! maybe they don't have one set...", **ephemeral_arg)
             return
-        
         except discord.Forbidden: # 403, discord api blocked?
             await send_response("looks like i can't reach this user's avatar, sorry.", **ephemeral_arg)
             return
-        
         except discord.HTTPException as e: # Other HTTP errors from Discord API
             status_code = getattr(e, 'status', 'Unknown')
             await send_response(f"discord is acting up. plz try again later. (Debug info: Status code {status_code})", **ephemeral_arg)
             return
-        
         except discord.DiscordException as e: # Any other discord related exceptions
             await send_response(f"discord is acting up. plz try again later. (Debug info: Error {e})", **ephemeral_arg)
             return
         except Exception as e: # Catch-all for any non-discord exceptions
             await send_response(f"soooooooomething went wrong :p, try again later! (Debug info: Error {e})", **ephemeral_arg)
             return
-
         if avatar_bytes is None: # Previous code didn't raise, but avatar_bytes is still None
             await send_response("Looks like there was an error :[ (Debug info: avatar_bytes is none)", **ephemeral_arg)
             return
-
         try:
             if effect_type == 'bonk':
                 filename = f"_bonk.png"
@@ -68,13 +58,10 @@ class Avatars(commands.Cog, ):
             elif effect_type == 'explosion':
                 filename = f"_explosion.gif" 
                 content = f" WENT BOOM!"
-
             else: # Should ideally not be reached
                 await send_response("Looks like there was an error :[ (Debug info: Unknown avatar effect)", **ephemeral_arg)
                 return
-
             output = generator_func(avatar_bytes, user.id) # calls the corresponding function in image_processing.py
-
             if output: # If output is valid
                 file = discord.File(output, filename=f"{user.id}{filename}")
                 await send_response(file=file, content=f"{user.mention} {content}")
@@ -83,12 +70,9 @@ class Avatars(commands.Cog, ):
             else: # If output is None or invalid
                 await send_response("Looks like there was an error :[ (Debug info: output was never returned)", **ephemeral_arg)
                 return
-
         except Exception as e: # This catches errors during the image generation (PIL errors, petpetgif errors, etc.)
-        
             error_message = f"An error occurred during image generation: {e}"
             print(error_message) # Log the full error to your console
-
             await send_response("something went wrong while generating the image...", **ephemeral_arg)
             return
 
@@ -104,7 +88,7 @@ class Avatars(commands.Cog, ):
     @commands.message_command(name="Pet the user!", integration_types=DEFAULT_INTEGRATIONS)
     async def petpet_msg_command(self, ctx: discord.ApplicationContext, message: discord.Message):
         await ctx.defer()
-        await self._generate_media(ctx, message, generate_petpet_gif, 'petpet')
+        await self._generate_media(ctx, message, petpet_gen, 'petpet')
         print(f"{ctx.author} pet {message.author}!")
     
     @commands.user_command(name="Explode the user!", integration_types=DEFAULT_INTEGRATIONS)
@@ -116,19 +100,19 @@ class Avatars(commands.Cog, ):
     @commands.message_command(name="Explode the user!", integration_types=DEFAULT_INTEGRATIONS)
     async def explosion_msg_command(self, ctx: discord.ApplicationContext, message: discord.Message):
         await ctx.defer()
-        await self._generate_media(ctx, message, generate_explosion_overlay, 'explosion')
+        await self._generate_media(ctx, message, explosion_gen, 'explosion')
         print(f"{ctx.author} exploded {message.author}!")
     
     @commands.user_command(name="Bonk the user!", integration_types=DEFAULT_INTEGRATIONS)
     async def bonk_user_command(self, ctx: discord.ApplicationContext, user: discord.User):
         await ctx.defer()
-        await self._generate_media(ctx, user, generate_bonk_image, 'bonk')
+        await self._generate_media(ctx, user, bonk_gen, 'bonk')
         print(f"{ctx.author} bonked {user}!")
 
     @commands.message_command(name="Bonk the user!", integration_types=DEFAULT_INTEGRATIONS)
-    async def bonk_msg_command(self, ctx: discord.ApplicationContext, message: discord.Message
+    async def bonk_msg_command(self, ctx: discord.ApplicationContext, message: discord.Message):
         await ctx.defer()
-        await self._generate_media(ctx, message, generate_bonk_image, 'bonk')
+        await self._generate_media(ctx, message, bonk_gen, 'bonk')
         print(f"{ctx.author} bonked {message.author}!")
 
     # Hidden prefix commands (owner only) - also call _generate_media directly
@@ -143,7 +127,7 @@ class Avatars(commands.Cog, ):
         await ctx.send(f"{user.mention} GET PETTTTTTTT!!!!")
         print(f"{ctx.author} quickfired pets for {user} {times} times.")
         for _ in range(times):
-            await self._generate_media(ctx, user, generate_petpet_gif, 'petpet') # Direct call
+            await self._generate_media(ctx, user, petpet_gen, 'petpet') # Direct call
             await asyncio.sleep(0.6)
 
     @commands.command(name="explode", hidden=True)
@@ -154,7 +138,7 @@ class Avatars(commands.Cog, ):
         if ctx.message.reference and user is None:
             replied_message = await ctx.message.channel.fetch_message(ctx.message.reference.message_id)
             user = replied_message.author
-        await self._generate_media(ctx, user, generate_explosion_overlay, 'explosion') # Direct call
+        await self._generate_media(ctx, user, explosion_gen, 'explosion') # Direct call
         print(f"{ctx.author} exploded {user}!")
 
     @commands.command(name="pet", hidden=True)
@@ -165,7 +149,7 @@ class Avatars(commands.Cog, ):
         if ctx.message.reference and user is None:
             replied_message = await ctx.message.channel.fetch_message(ctx.message.reference.message_id)
             user = replied_message.author
-        await self._generate_media(ctx, user, generate_petpet_gif, 'petpet') # Direct call
+        await self._generate_media(ctx, user, petpet_gen, 'petpet') # Direct call
         print(f"{ctx.author} pet {user}!")
 
     @commands.command(name="bonk", hidden=True)
@@ -176,7 +160,7 @@ class Avatars(commands.Cog, ):
         if ctx.message.reference and user is None:
             user = await ctx.message.channel.fetch_message(ctx.message.reference.message_id)
             user = replied_message  
-        await self._generate_media(ctx, user, generate_bonk_image, 'bonk') # Direct call
+        await self._generate_media(ctx, user, bonk_gen, 'bonk') # Direct call
         print(f"{ctx.author} bonked {user.display_name}!")
 
 
