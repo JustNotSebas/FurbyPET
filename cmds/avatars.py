@@ -100,7 +100,12 @@ class Avatars(commands.Cog, ):
         await ctx.defer()
         await self._generate_media(ctx, user, petpet_gen, 'petpet')
         print(f"{ctx.author} pet {user}!")
-    
+
+    @commands.message_command(name="Pet the user!", integration_types=DEFAULT_INTEGRATIONS)
+    async def petpet_msg_command(self, ctx: discord.ApplicationContext, message: discord.Message):
+        await ctx.defer()
+        await self._generate_media(ctx, message, generate_petpet_gif, 'petpet')
+        print(f"{ctx.author} pet {message.author}!")
     
     @commands.user_command(name="Explode the user!", integration_types=DEFAULT_INTEGRATIONS)
     async def explosion_user_command(self, ctx: discord.ApplicationContext, user: discord.User):
@@ -108,10 +113,70 @@ class Avatars(commands.Cog, ):
         await self._generate_media(ctx, user, explosion_gen, 'explosion')
         print(f"{ctx.author} exploded {user}!")
 
+    @commands.message_command(name="Explode the user!", integration_types=DEFAULT_INTEGRATIONS)
+    async def explosion_msg_command(self, ctx: discord.ApplicationContext, message: discord.Message):
+        await ctx.defer()
+        await self._generate_media(ctx, message, generate_explosion_overlay, 'explosion')
+        print(f"{ctx.author} exploded {message.author}!")
+    
     @commands.user_command(name="Bonk the user!", integration_types=DEFAULT_INTEGRATIONS)
     async def bonk_user_command(self, ctx: discord.ApplicationContext, user: discord.User):
         await ctx.defer()
-        await self._generate_media(ctx, user, bonk_gen, 'bonk')
+        await self._generate_media(ctx, user, generate_bonk_image, 'bonk')
+        print(f"{ctx.author} bonked {user}!")
+
+    @commands.message_command(name="Bonk the user!", integration_types=DEFAULT_INTEGRATIONS)
+    async def bonk_msg_command(self, ctx: discord.ApplicationContext, message: discord.Message
+        await ctx.defer()
+        await self._generate_media(ctx, message, generate_bonk_image, 'bonk')
+        print(f"{ctx.author} bonked {message.author}!")
+
+    # Hidden prefix commands (owner only) - also call _generate_media directly
+    @commands.command(name="quickfire", hidden=True)
+    @commands.is_owner() # Use the decorator for cleaner owner check
+    async def quickfire(self, ctx: commands.Context, times: int, user: discord.User = None):
+        """Hidden owner-only quickfire command via @bot mention"""
+        await ctx.trigger_typing()
+        if times <= 0:
+            await ctx.send("you're sending negative pets or what? (# of pets must be at least 1)")
+            return
+        await ctx.send(f"{user.mention} GET PETTTTTTTT!!!!")
+        print(f"{ctx.author} quickfired pets for {user} {times} times.")
+        for _ in range(times):
+            await self._generate_media(ctx, user, generate_petpet_gif, 'petpet') # Direct call
+            await asyncio.sleep(0.6)
+
+    @commands.command(name="explode", hidden=True)
+    @commands.is_owner()
+    async def explode(self, ctx: commands.Context, user: discord.User = None):
+        """Hidden explosion command via @bot mention"""
+        await ctx.trigger_typing()
+        if ctx.message.reference and user is None:
+            replied_message = await ctx.message.channel.fetch_message(ctx.message.reference.message_id)
+            user = replied_message.author
+        await self._generate_media(ctx, user, generate_explosion_overlay, 'explosion') # Direct call
+        print(f"{ctx.author} exploded {user}!")
+
+    @commands.command(name="pet", hidden=True)
+    @commands.is_owner()
+    async def pet(self, ctx: commands.Context, user: discord.User = None):
+        """Hidden petpet command via @bot mention"""
+        await ctx.trigger_typing()
+        if ctx.message.reference and user is None:
+            replied_message = await ctx.message.channel.fetch_message(ctx.message.reference.message_id)
+            user = replied_message.author
+        await self._generate_media(ctx, user, generate_petpet_gif, 'petpet') # Direct call
+        print(f"{ctx.author} pet {user}!")
+
+    @commands.command(name="bonk", hidden=True)
+    @commands.is_owner()
+    async def bonk(self, ctx: commands.Context, user: discord.User = None):
+        """Hidden bonk command via @bot mention"""
+        await ctx.trigger_typing()
+        if ctx.message.reference and user is None:
+            user = await ctx.message.channel.fetch_message(ctx.message.reference.message_id)
+            user = replied_message  
+        await self._generate_media(ctx, user, generate_bonk_image, 'bonk') # Direct call
         print(f"{ctx.author} bonked {user.display_name}!")
 
 
