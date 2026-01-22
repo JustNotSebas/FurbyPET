@@ -1,67 +1,95 @@
-import discord, platform, sys, psutil, os # pip install py-cord psutil
-from discord.ext import commands # part of py-cord
-from datetime import datetime, timedelta # part of standard library
-from dotenv import load_dotenv # pip install python-dotenv
+import discord  # pip install py-cord
+import platform  # part of standard library
+import sys  # part of standard library
+import psutil  # pip install psutil
+import os  # part of standard library
+from discord.ext import commands  # part of py-cord
+from datetime import datetime, timedelta  # part of standard library
+from dotenv import load_dotenv  # pip install python-dotenv
+import pytz  # pip install pytz
 
 load_dotenv()
 
-token = os.getenv("TOKEN") # Set on .env file or environment variable
-intents = discord.Intents.all() # For convenience; adjust as needed
-bot = commands.Bot(command_prefix=commands.when_mentioned_or("."), intents=intents, auto_sync_commands=True)
-bot.start_time = datetime.now()
+bot = commands.Bot(intents=discord.Intents.default(), auto_sync_commands=True)
+# By default, the bot has all intents enabled for convenience. Adjust as necessary.
+bot.tz = pytz.timezone(os.getenv("TIMEZONE"))
+bot.start_time = datetime.now(bot.tz)
 
-extensions = [ # Auto-load all command files in cmds/ directory
+extensions = [  # Auto-load all command files in cmds/ directory
     f"cmds.{file[:-3]}" for file in os.listdir("cmds") if file.endswith(".py")
 ]
 
+
 @bot.event
-async def on_connect(): # Load extensions and print bot info on connect
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Connected as {bot.user.name} ({bot.user.id})")
+async def on_connect():  # Load extensions and print bot info on connect
+    print(
+        f"""
+    ★ | Authenticated in Discord.
+    User: {bot.user.name}
+    ID: {bot.user.id}
+        """)
+
     if extensions:
-        print("Loading extensions...")
+        print("★ | Loading extensions...")
         for ext in extensions:
             try:
                 bot.load_extension(ext)
-                print(f"✓ Loaded {ext}")
+                print(f"✓ | Loaded {ext}")
             except Exception as e:
-                print(f"✗ Failed to load {ext}: {e}")
+                print(f"✗ | Failed to load {ext}: {e}")
+        print()
+
 
 @bot.event
-async def on_ready(): # Print bot info on ready
+async def on_ready():  # Print bot info on ready
     if not hasattr(bot, 'synced'):
         await bot.sync_commands(force=True)
         bot.synced = True
-        print("✓ Commands synced.")
+        print("✓ | Commands synced.")
 
     print("Guilds:")
     for guild in bot.guilds:
         print(f"- {guild.name} (ID: {guild.id})")
-    print(f"✓ Ready! Ping: {round(bot.latency * 1000)}ms")
+    print(f"✓ | Ready! Ping: {round(bot.latency * 1000)}ms")
+
 
 @bot.event
-async def on_command_error(ctx, error): # Global error handler
+async def on_application_command_error(ctx, error):
+    invoker = ctx.author
+    server = ctx.guild.name if hasattr(ctx, "guild") else "Executed in DM"
+    print(
+        f"""
+    !! | An error ocurred.          
+    User: {invoker}
+    Executed in: {server}
+    Error: {type(error).__module__}.{type(error).__name__}
+    Information: {error}
+        """)
+
+    if ctx.interaction.response.is_done():
+        return
+
+    try:
         if isinstance(error, commands.NotOwner):
             return
         elif isinstance(error, commands.CommandNotFound) or isinstance(error, discord.ext.commands.errors.CommandNotFound):
-            print(f"[bot info]: {ctx.author} attempted command '{ctx.invoked_with}' but it doesn't exist.")
+            return
         elif isinstance(error, commands.MissingPermissions) or isinstance(error, commands.BotMissingPermissions):
-            print(f"[bot warning]: Permissions error for {ctx.author} with command {ctx.command}: {error}")
             await ctx.send(f"looks like you don't have the permissions to run this command :p")
         elif isinstance(error, commands.MissingRequiredArgument):
-            print(f"[bot warning]: Missing argument for {ctx.author} with command {ctx.command}: {error}")
             await ctx.send(f"looks like you missed an argument: {error}\nUsage: `{ctx.command.usage}`" if ctx.command.usage else f"looks like you're missing an argument: {error}")
         elif isinstance(error, commands.BadArgument):
-            print(f"[bot warning]: Bad argument for {ctx.author} with command {ctx.command}: {error}")
             await ctx.send(f"idk what are you trying to do but you input an invalid argument: {error}")
         elif isinstance(error, commands.CommandOnCooldown):
-            print(f"[bot info]: Command {ctx.command} on cooldown for {ctx.author}: {error}")
             await ctx.send(f"chill out! you're on cooldown; try again in {error.retry_after:.1f} seconds.")
         elif isinstance(error, discord.DiscordException):
-            print(f"[bot exception]: A Discord API error occurred for {ctx.author} with command {ctx.command}: {error}")
             await ctx.send(f"discord's acting up as always. try again later! (Debug info: {error})")
         else:
-            print(f"[bot exception]: An unhandled error occurred with command '{ctx.invoked_with}': {error}")
             await ctx.send(f"discord's got something. plz notify this error! (Debug info: {error})")
+    except discord.HTTPException:
+        try:
+            await ctx.send_followup("An error occurred while processing the command.", ephemeral=True)
+        except Exception as e:
+            print("✗ | Couldn't send the error message to Discord.")
 
-
-bot.run(token)
+bot.run(os.getenv("TOKEN"))

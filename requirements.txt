@@ -5,4 +5,5 @@ PyNaCl==1.5.0
 python-dotenv==1.1.0
 pytz==2025.2
 PyYAML==6.0.2
-
+psutil==7.2.1
+setuptools==80.8.0
