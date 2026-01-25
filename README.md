@@ -16,7 +16,6 @@ Then you are in the right place and time!
 
 | variable            | description                                                                        | default                 | 
 | ------------        | -----------                                                                        | -----------             | 
-| PYTHONPYCACHEPREFIX | Removes Python's ``__pycache__`` folder generation. Set to 0 to reenable.            | 1                       | 
 | TOKEN               | Sets the token used by py-cord to start the bot. Required.                         | ADD_YOUR_BOT_TOKEN_HERE | 
 | TIMEZONE            | Sets the timezone used for time-related purposes. Uses PYTZ format. | UTC | UTC                     |
 
