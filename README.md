@@ -18,7 +18,7 @@ Then you are in the right place and time!
 | ------------        | -----------                                                                        | -----------             | 
 | PYTHONPYCACHEPREFIX | Removes Python's ``__pycache__`` folder generation. Set to 0 to reenable.            | 1                       | 
 | TOKEN               | Sets the token used by py-cord to start the bot. Required.                         | ADD_YOUR_BOT_TOKEN_HERE | 
-| TIMEZONE            | Set's the timezone used for time-related purposes. Uses PYTZ format. | UTC | UTC                     |
+| TIMEZONE            | Sets the timezone used for time-related purposes. Uses PYTZ format. | UTC | UTC                     |
 
 3. run with ``python3 main.py`` or ``py main.py`` if you're on windows. no extra arguments required, as long as you have set all your variables correctly.
 
