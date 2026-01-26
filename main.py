@@ -10,7 +10,7 @@ import pytz  # pip install pytz
 
 load_dotenv()
 
-bot = commands.Bot(intents=discord.Intents.default(), auto_sync_commands=True
+bot = commands.Bot(intents=discord.Intents.default(), auto_sync_commands=True)
 bot.tz = pytz.timezone(os.getenv("TIMEZONE"))
 bot.start_time = datetime.now(bot.tz)
 
