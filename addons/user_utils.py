@@ -11,13 +11,13 @@ async def resolve_user(
         return None
 
     if isinstance(target, discord.Member):
-        return await guild.fetch_member(target.id)
+        return await target.guild.fetch_member(target.id)
 
     if isinstance(target, discord.User):
         if guild:
             try:
                 return await guild.fetch_member(target.id)
-            except discord.HTTPException:
+            except (discord.HTTPException, discord.NotFound):
                 pass
         return await bot.fetch_user(target.id)
 
@@ -29,11 +29,13 @@ async def resolve_user(
         if guild:
             try:
                 return await guild.fetch_member(user_id)
-            except discord.HTTPException:
+            except (discord.HTTPException, discord.NotFound):
                 pass
         return await bot.fetch_user(user_id)
 
-    except (ValueError, discord.NotFound, discord.Forbidden) as e:
+    except ValueError:
+        raise Exception("Invalid user ID format")
+    except (discord.NotFound, discord.Forbidden) as e:
         raise Exception("Failed to resolve user") from e
 
 
