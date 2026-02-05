@@ -21,7 +21,6 @@ class Avatars(commands.Cog, ):
         user = await resolve_user(
             target=target,
             bot=self.bot,
-            guild=getattr(ctx, 'guild', None)
         )
         # Determine the response method
         is_app_command_ctx = isinstance(ctx, discord.ApplicationContext)
@@ -55,13 +54,13 @@ class Avatars(commands.Cog, ):
         try:
             if effect_type == 'bonk':
                 filename = f"_bonk.png"
-                content = f" BONK!!!!"
+                content = f"BONK!!!!"
             elif effect_type == 'petpet':
                 filename = f"_petpet.gif"
-                content = f" petsss!!!!!!"
+                content = f"petsss!!!!!!"
             elif effect_type == 'explosion':
                 filename = f"_explosion.gif"
-                content = f" WENT BOOM!"
+                content = f"WENT BOOM!"
             else:  # Should ideally not be reached
                 await send_response("Looks like there was an error :[ (Debug info: Unknown avatar effect)", **ephemeral_arg)
                 return
@@ -77,10 +76,8 @@ class Avatars(commands.Cog, ):
                 return
         # This catches errors during the image generation (PIL errors, petpetgif errors, etc.)
         except Exception as e:
-            error_message = f"An error occurred during image generation: {e}"
-            print(error_message)  # Log the full error to your console
             await send_response("something went wrong while generating the image...", **ephemeral_arg)
-            return
+            raise e
 
     # Allow both guild and user context menus
     DEFAULT = {discord.IntegrationType.guild_install,

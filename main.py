@@ -59,7 +59,7 @@ async def on_application_command_error(ctx, error):
     # Build error info and log it
     error_info = f"""
 User: {ctx.author} ({ctx.author.id})
-Guild: {ctx.guild.name if ctx.guild else 'DM'} ({ctx.guild.id if ctx.guild else 'N/A'})
+Guild: {ctx.guild.name or "Unknown Guild / DM" if ctx.guild else "DM"} ({ctx.guild.id if ctx.guild else 'N/A'})
 Command: {ctx.command.qualified_name if ctx.command else 'Unknown'}
 Error Type: {type(error).__name__}
 Error Message: {str(error)}
@@ -69,16 +69,18 @@ Traceback:
 {'-' * 70}
 """
 
-    logger.error(error_info)
+    with open("logs/bot_errors.log", "a") as log_file:
+        log_file.write(error_info)
+
     print(
         f"""
     !! | An error ocurred.
     Date: {datetime.now(bot.tz).strftime('%Y-%m-%d %H:%M:%S %Z')}          
     User: {ctx.author}
-    Executed in: {ctx.guild.name if ctx.guild else 'DM'} ({ctx.guild.id if ctx.guild else 'N/A'})
+    Executed in: {ctx.guild.name or "Unknown Guild / DM" if ctx.guild else "DM"} ({ctx.guild.id if ctx.guild else 'N/A'})
     Command: {ctx.command.qualified_name if ctx.command else 'Unknown'}
     Error: {type(error).__module__}.{type(error).__name__}
-        """)
+""")
 
     if ctx.interaction.response.is_done():
         return
