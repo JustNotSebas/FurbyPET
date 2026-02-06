@@ -12,9 +12,12 @@ def _load_config():
         return yaml.safe_load(f)
 
 # Cache overlay images to avoid repeated file I/O
+# Note: Images are kept open for the lifetime of the application for performance
+# This is acceptable for a small number of overlay images
 _overlay_cache = {}
 
 def _get_overlay_image(path):
+    """Get a cached overlay image. Returns a copy to avoid threading issues."""
     if path not in _overlay_cache:
         _overlay_cache[path] = Image.open(path)
     return _overlay_cache[path].copy()

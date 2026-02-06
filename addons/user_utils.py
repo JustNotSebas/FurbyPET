@@ -23,7 +23,6 @@ async def resolve_user(
     if isinstance(target, discord.User):
         # User object is already available, no need to fetch
         return target
-        
     try:
         user_id = int(target)
         try:
