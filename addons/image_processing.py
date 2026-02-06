@@ -3,9 +3,23 @@ from io import BytesIO  # part of standard library
 from petpetgif import petpet as petting  # pip install petpetgif
 from PIL import Image  # pip install Pillow
 import yaml  # pip install pyyaml
+from functools import lru_cache
 
-with open('config.yaml', 'r') as f:
-    config = yaml.safe_load(f)
+# Cache config loading to avoid repeated file I/O
+@lru_cache(maxsize=1)
+def _load_config():
+    with open('config.yaml', 'r') as f:
+        return yaml.safe_load(f)
+
+# Cache overlay images to avoid repeated file I/O
+_overlay_cache = {}
+
+def _get_overlay_image(path):
+    if path not in _overlay_cache:
+        _overlay_cache[path] = Image.open(path)
+    return _overlay_cache[path].copy()
+
+config = _load_config()
 
 
 def petpet_gen(avatar_bytes: bytes, user_id: int) -> BytesIO:
@@ -27,7 +41,7 @@ def bonk_gen(avatar_bytes: bytes, user_id: int) -> BytesIO:
         image = Image.open(BytesIO(avatar_bytes)).convert(
             "RGBA")  # avatar from discord
         background = Image.new('RGB', (512, 512), "white")  # create a white bg
-        overlay = Image.open(config['bonk']['overlay'])  # bonk overlay image
+        overlay = _get_overlay_image(config['bonk']['overlay'])  # bonk overlay image (cached)
         target_size = config['bonk']['target_size']  # avatar size
         squished_height = int(target_size * 0.4)  # adjust float as wanted
 
@@ -60,8 +74,8 @@ def explosion_gen(avatar_bytes: bytes, user_id: int) -> BytesIO:
     try:
         image = Image.open(BytesIO(avatar_bytes)).convert("RGBA")
         avatar = image.resize((200, 200), Image.Resampling.LANCZOS)
-        explosion_gif = Image.open(
-            config['explosion']['overlay'])  # open gif (explosion)
+        explosion_gif = _get_overlay_image(
+            config['explosion']['overlay'])  # open gif (explosion) - cached
 
         frames = []
         durations = []

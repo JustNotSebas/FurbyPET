@@ -61,7 +61,7 @@ class Report(commands.Cog):
         try:
             await owner.send(embed=embed)
             await ctx.respond("✓ Report submitted successfully! Thanks for the feedback.", ephemeral=True)
-        except discord.Forbidden:
+        except discord.Forbidden as e:
             await ctx.respond("✗ Couldn't send report - DMs are disabled. Please contact the bot owner directly.", ephemeral=True)
             raise e
         except Exception as e:

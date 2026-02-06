@@ -6,6 +6,7 @@ from datetime import datetime, timedelta  # part of standard library
 from dotenv import load_dotenv  # pip install python-dotenv
 import pytz  # pip install pytz
 import traceback  # part of standard library
+import aiofiles  # pip install aiofiles
 
 load_dotenv()
 
@@ -69,8 +70,12 @@ Traceback:
 {'-' * 70}
 """
 
-    with open("logs/bot_errors.log", "a") as log_file:
-        log_file.write(error_info)
+    # Use async file I/O to avoid blocking
+    try:
+        async with aiofiles.open("logs/bot_errors.log", "a") as log_file:
+            await log_file.write(error_info)
+    except Exception as log_error:
+        print(f"✗ | Failed to write to log file: {log_error}")
 
     print(
         f"""

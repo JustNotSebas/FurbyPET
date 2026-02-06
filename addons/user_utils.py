@@ -15,23 +15,15 @@ async def resolve_user(
             return target.author
         return await resolve_user(target.author, bot, guild)
 
+    # For discord.Member, return it directly without fetching
+    # The member object already contains all needed info
     if isinstance(target, discord.Member):
-        guild = target.guild
-        try:
-            return await guild.fetch_member(target.id)
-        except (discord.HTTPException, discord.NotFound):
-            print(
-                f"Failed to fetch {target.name} ({target.id}) from guild {guild.id}. Fetching user object.")
-        try:
-            return await bot.fetch_user(target.id)
-        except (discord.HTTPException, discord.NotFound):
-            raise Exception("Failed to resolve user") from None
+        return target
 
     if isinstance(target, discord.User):
-        try:
-            return await bot.fetch_user(target.id)
-        except (discord.HTTPException, discord.NotFound):
-            raise Exception("Failed to resolve user") from None
+        # User object is already available, no need to fetch
+        return target
+        
     try:
         user_id = int(target)
         try:

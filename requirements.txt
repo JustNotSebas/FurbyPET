@@ -7,3 +7,4 @@ pytz==2025.2
 PyYAML==6.0.2
 psutil==7.2.1
 setuptools==80.8.0
+aiofiles==24.1.0
