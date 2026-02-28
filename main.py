@@ -1,18 +1,18 @@
-import discord  # pip install py-cord
-import os  # part of standard library
-from addons.logging import logger
-from discord.ext import commands  # part of py-cord
-from datetime import datetime, timedelta  # part of standard library
-from dotenv import load_dotenv  # pip install python-dotenv
-import pytz  # pip install pytz
-import traceback  # part of standard library
+import discord
+from discord.ext import commands
+from dotenv import load_dotenv
+import pytz
+from addons.logging import logger  # addons/logging.py
+import addons.exceptions as BotExceptions  # addons/exceptions.py
+import os
+from datetime import datetime, timedelta
+import traceback
 
 load_dotenv()
 
 bot = commands.Bot(intents=discord.Intents.default(), auto_sync_commands=True)
 bot.tz = pytz.timezone(os.getenv("TIMEZONE"))
 bot.start_time = datetime.now(bot.tz)
-bot.report_id = int(os.getenv("REPORT_ID"))
 
 extensions = [  # Auto-load all command files in cmds/ directory
     f"cmds.{file[:-3]}" for file in os.listdir("cmds") if file.endswith(".py")
@@ -52,63 +52,71 @@ async def on_ready():  # Print bot info on ready
     print(f"✓ | Ready! Ping: {round(bot.latency * 1000)}ms")
 
 
-@bot.event
-async def on_application_command_error(ctx, error):
-    error = getattr(error, 'original', error)
-
-    # Build error info and log it
-    error_info = f"""
-User: {ctx.author} ({ctx.author.id})
-Guild: {ctx.guild.name or "Unknown Guild / DM" if ctx.guild else "DM"} ({ctx.guild.id if ctx.guild else 'N/A'})
-Command: {ctx.command.qualified_name if ctx.command else 'Unknown'}
-Error Type: {type(error).__name__}
-Error Message: {str(error)}
-
+# Build detailed error info and optionally include traceback
+async def error_builder(ctx, error, tb=False):
+    if tb:
+        error_traceback = f"""
+    User: {ctx.author} ({ctx.author.id})
+    Guild: {ctx.guild.name or "Unknown Guild / DM" if ctx.guild else "DM"} ({ctx.guild.id if ctx.guild else 'N/A'})
+    Command: {ctx.command.qualified_name if ctx.command else 'Unknown'}
+    Error Type: {type(error).__name__}
+    Error Message: {str(error)}
 Traceback:
 {''.join(traceback.format_exception(type(error), error, error.__traceback__))}
 {'-' * 70}
 """
+        return error_traceback
 
-    with open("logs/bot_errors.log", "a") as log_file:
-        log_file.write(error_info)
-
-    print(
-        f"""
-    !! | An error ocurred.
+    error_info = f"""
     Date: {datetime.now(bot.tz).strftime('%Y-%m-%d %H:%M:%S %Z')}          
     User: {ctx.author}
     Executed in: {ctx.guild.name or "Unknown Guild / DM" if ctx.guild else "DM"} ({ctx.guild.id if ctx.guild else 'N/A'})
     Command: {ctx.command.qualified_name if ctx.command else 'Unknown'}
     Error: {type(error).__module__}.{type(error).__name__}
-""")
+    """
+    return error_info
 
-    if ctx.interaction.response.is_done():
-        return
+
+@bot.event
+async def on_application_command_error(ctx, error):
+    error = getattr(error, 'original', error)
+    error_traceback = await error_builder(ctx, error, tb=True)
+    with open("logs/bot_errors.log", "a") as log_file:
+        log_file.write(error_traceback + "\n")
+
+    error_info = await error_builder(ctx, error, tb=False)
+    print(
+        f"""
+    !! | An error occurred.
+    {error_info}""")
 
     try:
         if isinstance(error, commands.NotOwner):
             return
         elif isinstance(error, commands.CommandNotFound):
             return
+        elif isinstance(error, BotExceptions.InstanceNotConfigured):
+            extra = f" details: {error}" if str(error) else ""
+            await ctx.respond(f"this instance of the bot is not properly configured. please contact the instance's administrator." + extra, ephemeral=True)
         elif isinstance(error, (commands.MissingPermissions, commands.BotMissingPermissions)):
-            await ctx.send(f"looks like you don't have the permissions to run this command :p")
+            await ctx.respond(f"looks like you don't have the permissions to run this command :p")
         elif isinstance(error, discord.Forbidden):
-            await ctx.send(f"i don't have the permissions to do that, sorry")
+            await ctx.respond(f"i don't have the permissions to do that, sorry")
         elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send(f"looks like you missed an argument: {error}\nUsage: `{ctx.command.usage}`" if ctx.command.usage else f"looks like you're missing an argument: {error}")
+            await ctx.respond(f"looks like you missed an argument: {error}\nUsage: `{ctx.command.usage}`" if ctx.command.usage else f"looks like you're missing an argument: {error}")
         elif isinstance(error, commands.BadArgument):
-            await ctx.send(f"idk what are you trying to do but you input an invalid argument: {error}")
+            await ctx.respond(f"idk what are you trying to do but you input an invalid argument: {error}")
         elif isinstance(error, commands.CommandOnCooldown):
-            await ctx.send(f"chill out! you're on cooldown; try again in {error.retry_after:.1f} seconds.")
+            await ctx.respond(f"chill out! you're on cooldown; try again in {error.retry_after:.1f} seconds.")
         elif isinstance(error, discord.NotFound):
-            await ctx.send(f"whoops, can't find what you're looking for :b")
+            await ctx.respond(f"whoops, can't find what you're looking for :b")
         elif isinstance(error, discord.DiscordException):
-            await ctx.send(f"discord's acting up as always. try again later! (Debug info: {error})")
+            await ctx.respond(f"discord's acting up as always. try again later! (Debug info: {error})")
         else:
-            await ctx.send(f"discord's got something. plz notify this error! (Debug info: {error})")
+            await ctx.respond(f"discord's got something. plz notify this error! (Debug info: {error})")
     except discord.HTTPException:
         try:
-            await ctx.send_followup("An error occurred while processing the command.", ephemeral=True)
+            await ctx.respond("An error occurred while processing the command.", ephemeral=True)
         except Exception as e:
             print("✗ | Couldn't send the error message to Discord.")
 

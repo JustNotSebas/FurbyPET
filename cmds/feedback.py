@@ -1,18 +1,43 @@
-# pyright: ignore[reportInvalidTypeForme]
+import os
+from datetime import datetime
 import discord
 from discord.ext import commands
 from discord.commands import SlashCommandGroup, Option
-from datetime import datetime
+import addons.exceptions as BotExceptions
 
 
-class Report(commands.Cog):
+class Feedback(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.support_invite = os.getenv("SUPPORT_INVITE_URL")
+        self.support_channel = os.getenv("SUPPORT_CHANNEL_ID")
 
-    report = SlashCommandGroup(
-        "report", "Report bugs, suggest features, or ask questions")
+    system = SlashCommandGroup("feedback", "Commands related to user feedback")
 
-    @report.command(name="submit", description="Submit a bug report, suggestion, or inquiry")
+    @system.command(name="support", description="Get a discord invite link for support.")
+    async def support(self, ctx):
+        if not self.support_invite:
+            raise BotExceptions.InstanceNotConfigured(
+                "SUPPORT_INVITE_URL not set.")
+
+        embed = discord.Embed(
+            title="Need assistance?",
+            description="Join the support server for help and feedback!",
+            color=discord.Color.nitro_pink(),
+        )
+
+        embed.add_field(
+            name="Invite Link",
+            value=f"[Click here to join the support server.]({self.support_invite})",
+            inline=False,
+        )
+
+        await ctx.respond(embed=embed, ephemeral=True)
+
+    @system.command(
+        name="submit",
+        description="Submit a bug report, suggestion, or inquiry"
+    )
     async def submit_report(
         self,
         ctx,
@@ -21,53 +46,61 @@ class Report(commands.Cog):
             "Type of report",
             choices=["Bug/Error", "Suggestion", "Inquiry"],
             required=True
-        ),
+        ),  # pyright: ignore[reportInvalidTypeForm]
         message: Option(
             str,
             "Your report message",
             required=True,
             max_length=1000
-        )
+        )  # pyright: ignore[reportInvalidTypeForm]
     ):
         await ctx.defer(ephemeral=True)
 
-        # Get the owner (you)
-        owner = await self.bot.fetch_user(int(self.bot.report_id))
+        if not self.support_channel:
+            raise BotExceptions.InstanceNotConfigured(
+                "SUPPORT_CHANNEL_ID not set.")
 
-        # Color based on category
+        support_channel = self.bot.get_channel(int(self.support_channel))
+        if support_channel is None:
+            raise BotExceptions.InstanceNotConfigured(
+                f"Support channel {self.support_channel} not found.")
+
         color_map = {
             "Bug/Error": discord.Color.red(),
             "Suggestion": discord.Color.blue(),
-            "Inquiry": discord.Color.gold()
+            "Inquiry": discord.Color.gold(),
         }
-
-        # Build embed
         embed = discord.Embed(
             title=f"New {category}",
             description=message,
             color=color_map.get(category, discord.Color.greyple()),
-            timestamp=datetime.now(self.bot.tz)
+            timestamp=datetime.now(self.bot.tz),
         )
         embed.set_author(
             name=f"{ctx.author} ({ctx.author.id})",
-            icon_url=ctx.author.display_avatar.url
+            icon_url=ctx.author.display_avatar.url,
         )
         embed.add_field(
             name="Server",
             value=f"{ctx.guild.name} ({ctx.guild.id})" if ctx.guild else "DM",
-            inline=False
+            inline=False,
         )
 
         try:
-            await owner.send(embed=embed)
-            await ctx.respond("✓ Report submitted successfully! Thanks for the feedback.", ephemeral=True)
+            await support_channel.send(embed=embed)
+            await ctx.respond(
+                "✓ Report submitted successfully! Thanks for the feedback. "
+                "If you need further assistance, use `/feedback support`.",
+                ephemeral=True
+            )
+
         except discord.Forbidden:
-            await ctx.respond("✗ Couldn't send report - DMs are disabled. Please contact the bot owner directly.", ephemeral=True)
-            raise e
-        except Exception as e:
-            await ctx.respond(f"✗ Failed to send report: {e}", ephemeral=True)
-            raise e
+            raise BotExceptions.InstanceNotConfigured(
+                "Couldn't send the report message due to missing permissions.")
+
+        except Exception:
+            raise
 
 
 def setup(bot):
-    bot.add_cog(Report(bot))
+    bot.add_cog(Feedback(bot))

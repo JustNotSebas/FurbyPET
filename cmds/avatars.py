@@ -1,8 +1,5 @@
 # This one's the longest
 import discord
-import asyncio
-import yaml
-import random  # pip install py-cord pyyaml
 from discord.ext import commands  # part of py-cord
 from typing import Union
 from addons.user_utils import resolve_user, get_avatar_url
@@ -23,9 +20,10 @@ class Avatars(commands.Cog, ):
             bot=self.bot,
         )
         # Determine the response method
-        is_app_command_ctx = isinstance(ctx, discord.ApplicationContext)
-        send_response = ctx.respond if is_app_command_ctx else ctx.send
-        ephemeral_arg = {'ephemeral': True} if is_app_command_ctx else {}
+        send_response = ctx.respond if isinstance(
+            ctx, discord.ApplicationContext) else ctx.send
+        ephemeral_arg = {'ephemeral': True} if isinstance(
+            ctx, discord.ApplicationContext) else {}
         if user is None:  # In the non-zero chance user resolution fails
             await send_response("who's this user? i couldn't resolve their info. maybe try again?", **ephemeral_arg)
             return
@@ -82,9 +80,6 @@ class Avatars(commands.Cog, ):
     # Allow both guild and user context menus
     DEFAULT = {discord.IntegrationType.guild_install,
                discord.IntegrationType.user_install}
-    # Guild context menus only
-    SERVER = {discord.IntegrationType.guild_install}
-    USER = {discord.IntegrationType.user_install}  # User context menus only
 
     @commands.user_command(name="Pet the user!", integration_types=DEFAULT)
     async def petpet_user_command(self, ctx: discord.ApplicationContext, user: discord.User):

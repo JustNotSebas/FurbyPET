@@ -14,10 +14,12 @@ Then you are in the right place and time!
 
 2. rename .env.example to .env and set your variables
 
-| variable            | description                                                                        | default                 | 
-| ------------        | -----------                                                                        | -----------             | 
-| TOKEN               | Sets the token used by py-cord to start the bot. Required.                         | ADD_YOUR_BOT_TOKEN_HERE | 
-| TIMEZONE            | Sets the timezone used for time-related purposes. Uses PYTZ format. | UTC | UTC                     |
+| variable            | description                                                         | default                 | 
+| ------------        | -----------                                                         | -----------             | 
+| TOKEN               | Sets the token used by py-cord to start the bot. Required.          | ADD_YOUR_BOT_TOKEN_HERE | 
+| TIMEZONE            | Sets the timezone used for time-related purposes. Uses PYTZ format. | UTC | 
+| SUPPORT_INVITE_URL  | Sets the Discord server support invite for the /feedback support command. If not set, the command will fail. | .gg/your-support-server-invite | 
+| SUPPORT_CHANNEL_ID  | Sets the Discord server channel where all inquires from /feedback submit will be delivered. If not set, the command will fail. | 123456789012345678 | 
 
 3. run with ``python3 main.py`` or ``py main.py`` if you're on windows. no extra arguments required, as long as you have set all your variables correctly.
 
