@@ -1,15 +1,12 @@
 # Avatar Generation Settings
-petpet:
-  blank: True
-    
-  # Bonk settings
+
+# Bonk settings
 bonk:
   overlay: "./img_temps/bonk_clear.png"
   target_size: 250
   position:
     x: 368
     y: 126
-  timeout: 5 # seconds
     
 explosion:
   overlay: "./img_temps/explosion_clear.gif"

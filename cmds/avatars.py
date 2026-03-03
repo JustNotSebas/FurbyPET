@@ -2,7 +2,7 @@
 import discord
 from discord.ext import commands  # part of py-cord
 from typing import Union
-from addons.user_utils import resolve_user, get_avatar_url
+from addons.user_utils import resolve_user
 from addons.image_processing import petpet_gen, bonk_gen, explosion_gen
 
 
@@ -11,7 +11,7 @@ class Avatars(commands.Cog, ):
         self.bot = bot
 
     async def _generate_media(self,
-                              ctx: Union[discord.ApplicationContext, commands.Context],
+                              ctx: discord.ApplicationContext,
                               target: Union[discord.User, discord.Member, discord.Message, str],
                               generator_func, effect_type):  # 'petpet', 'bonk', or 'explosion'
 
@@ -19,62 +19,44 @@ class Avatars(commands.Cog, ):
             target=target,
             bot=self.bot,
         )
-        # Determine the response method
-        send_response = ctx.respond if isinstance(
-            ctx, discord.ApplicationContext) else ctx.send
-        ephemeral_arg = {'ephemeral': True} if isinstance(
-            ctx, discord.ApplicationContext) else {}
+
         if user is None:  # In the non-zero chance user resolution fails
-            await send_response("who's this user? i couldn't resolve their info. maybe try again?", **ephemeral_arg)
+            await ctx.respond("who's this user? i couldn't resolve their info. maybe try again?", ephemeral=True)
             return
-        avatar_bytes = None  # Initialize to None
         try:
             avatar_bytes = await user.display_avatar.with_format("png").read()
         except discord.NotFound:  # 404, most likely no avatar set
-            await send_response("i can't find their avatar! maybe they don't have one set...", **ephemeral_arg)
-            return
-        except discord.Forbidden:  # 403, discord api blocked?
-            await send_response("looks like i can't reach this user's avatar, sorry.", **ephemeral_arg)
+            await ctx.respond("i couldn't find this avatar! maybe they don't have one set?", ephemeral=True)
             return
         except discord.HTTPException as e:  # Other HTTP errors from Discord API
             status_code = getattr(e, 'status', 'Unknown')
-            await send_response(f"discord is acting up. plz try again later. (Debug info: Status code {status_code})", **ephemeral_arg)
-            return
-        except discord.DiscordException as e:  # Any other discord related exceptions
-            await send_response(f"discord is acting up. plz try again later. (Debug info: Error {e})", **ephemeral_arg)
+            await ctx.respond(f"looks like discord couldn't handle this. try again later! (Debug info: Status code {status_code})", ephemeral=True)
             return
         except Exception as e:  # Catch-all for any non-discord exceptions
-            await send_response(f"soooooooomething went wrong :p, try again later! (Debug info: Error {e})", **ephemeral_arg)
-            return
-        if avatar_bytes is None:  # Previous code didn't raise, but avatar_bytes is still None
-            await send_response("Looks like there was an error :[ (Debug info: avatar_bytes is none)", **ephemeral_arg)
+            await ctx.respond(f"looks like something went wrong, try again later! (Debug info: Error {e})", ephemeral=True)
             return
         try:
             if effect_type == 'bonk':
-                filename = f"_bonk.png"
-                content = f"BONK!!!!"
+                filename = "_bonk.png"
+                content = "BONK!!!!"
             elif effect_type == 'petpet':
-                filename = f"_petpet.gif"
-                content = f"petsss!!!!!!"
+                filename = "_petpet.gif"
+                content = "petsss!!!!!!"
             elif effect_type == 'explosion':
-                filename = f"_explosion.gif"
-                content = f"WENT BOOM!"
+                filename = "_explosion.gif"
+                content = "WENT BOOM!"
             else:  # Should ideally not be reached
-                await send_response("Looks like there was an error :[ (Debug info: Unknown avatar effect)", **ephemeral_arg)
+                await ctx.respond("Looks like there was an error :[ (Debug info: Unknown avatar effect)", ephemeral=True)
                 return
             # calls the corresponding function in image_processing.py
-            output = generator_func(avatar_bytes, user.id)
-            if output:  # If output is valid
-                file = discord.File(output, filename=f"{user.id}{filename}")
-                await send_response(file=file, content=f"{user.mention} {content}")
-                if hasattr(output, 'close'):
-                    output.close()
-            else:  # If output is None or invalid
-                await send_response("Looks like there was an error :[ (Debug info: output was never returned)", **ephemeral_arg)
-                return
+            output = generator_func(avatar_bytes)
+            file = discord.File(output, filename=f"{user.id}{filename}")
+            await ctx.respond(file=file, content=f"{user.mention} {content}")
+            if hasattr(output, 'close'):
+                output.close()
         # This catches errors during the image generation (PIL errors, petpetgif errors, etc.)
         except Exception as e:
-            await send_response("something went wrong while generating the image...", **ephemeral_arg)
+            await ctx.respond("something went wrong while generating the image...", ephemeral=True)
             raise e
 
     # Allow both guild and user context menus

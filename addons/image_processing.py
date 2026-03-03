@@ -8,21 +8,21 @@ with open('config.yaml', 'r') as f:
     config = yaml.safe_load(f)
 
 
-def petpet_gen(avatar_bytes: bytes, user_id: int) -> BytesIO:
-    source = BytesIO(avatar_bytes)  # file container
+def petpet_gen(avatar_bytes: bytes) -> BytesIO:
+    source = BytesIO(avatar_bytes)
     dest = BytesIO()
     try:
-        petting.make(source, dest)  # from petpetgif
-        dest.seek(0)  # reset pointer to start
+        petting.make(source, dest)
+        dest.seek(0)
     except Exception as e:
-        source.close()
-        dest.close()
-        raise Exception(f"Failed to generate petpet GIF: {e}")
-    source.close()
+        raise Exception(f"Failed to generate petpet GIF: {e}") from e
+    finally:
+        source.close()  # always runs, success or not
     return dest
 
 
-def bonk_gen(avatar_bytes: bytes, user_id: int) -> BytesIO:
+def bonk_gen(avatar_bytes: bytes) -> BytesIO:
+    image = background = overlay = composite = None
     try:
         image = Image.open(BytesIO(avatar_bytes)).convert(
             "RGBA")  # avatar from discord
@@ -45,28 +45,26 @@ def bonk_gen(avatar_bytes: bytes, user_id: int) -> BytesIO:
         output = BytesIO()  # output container
         composite.save(output, format="PNG")  # save as PNG
         output.seek(0)  # reset pointer to start
-
-        # Cleanup
-        image.close()
-        background.close()
-        overlay.close()
-        composite.close()
     except Exception as e:
-        raise Exception(f"Failed to generate bonk image: {e}")
+        raise Exception(f"Failed to generate bonk image: {e}") from e
+    finally:
+        for obj in [image, background, overlay, composite]:
+            if obj:
+                obj.close()
     return output
 
 
-def explosion_gen(avatar_bytes: bytes, user_id: int) -> BytesIO:
+def explosion_gen(avatar_bytes: bytes) -> BytesIO:
+    image = avatar = explosion_gif = explosion_frame = None
+    frames = []
     try:
         image = Image.open(BytesIO(avatar_bytes)).convert("RGBA")
         avatar = image.resize((200, 200), Image.Resampling.LANCZOS)
         explosion_gif = Image.open(
             config['explosion']['overlay'])  # open gif (explosion)
-
-        frames = []
         durations = []
 
-        # I don't understand what any of this does but it works to extract frames
+        # I kinda understand what this does now
         try:
             while True:
                 duration = explosion_gif.info.get('duration', 170)
@@ -85,18 +83,7 @@ def explosion_gen(avatar_bytes: bytes, user_id: int) -> BytesIO:
                 frames.append(composite)
                 explosion_gif.seek(explosion_gif.tell() + 1)
         except EOFError:
-            pass
-
-        # If no frames were extracted, create a single frame
-        if not frames:
-            explosion_frame = explosion_gif.copy()
-            if explosion_frame.mode != 'RGBA':
-                explosion_frame = explosion_frame.convert('RGBA')
-            explosion_frame = explosion_frame.resize(
-                (200, 200), Image.Resampling.LANCZOS)
-            composite = Image.alpha_composite(avatar, explosion_frame)
-            frames = [composite]
-            durations = [100]
+            pass  # End of frames
 
         # Save as gif
         output = BytesIO()
@@ -110,18 +97,12 @@ def explosion_gen(avatar_bytes: bytes, user_id: int) -> BytesIO:
             optimize=False,  # Disable optimization to preserve colors
             disposal=2
         )
-
         output.seek(0)
 
-        # Cleanup
-        for frame in frames:
-            frame.close()
-        image.close()
-        avatar.close()
-        explosion_gif.close()
-        if 'explosion_frame' in locals():
-            explosion_frame.close()
-
     except Exception as e:
-        raise Exception(f"Failed to generate explosion overlay: {e}")
+        raise Exception(f"Failed to generate explosion overlay: {e}") from e
+    finally:
+        for obj in [image, avatar, explosion_gif, explosion_frame] + frames:
+            if obj:
+                obj.close()
     return output

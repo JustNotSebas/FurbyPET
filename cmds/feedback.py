@@ -59,8 +59,11 @@ class Feedback(commands.Cog):
         if not self.support_channel:
             raise BotExceptions.InstanceNotConfigured(
                 "SUPPORT_CHANNEL_ID not set.")
-
-        support_channel = self.bot.get_channel(int(self.support_channel))
+        try:
+            support_channel = self.bot.get_channel(int(self.support_channel))
+        except ValueError:
+            raise BotExceptions.InstanceNotConfigured(
+                "SUPPORT_CHANNEL_ID must be a valid integer channel ID.")
         if support_channel is None:
             raise BotExceptions.InstanceNotConfigured(
                 f"Support channel {self.support_channel} not found.")
@@ -97,9 +100,6 @@ class Feedback(commands.Cog):
         except discord.Forbidden:
             raise BotExceptions.InstanceNotConfigured(
                 "Couldn't send the report message due to missing permissions.")
-
-        except Exception:
-            raise
 
 
 def setup(bot):

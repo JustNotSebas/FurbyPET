@@ -5,7 +5,7 @@ import pytz
 from addons.logging import logger  # addons/logging.py
 import addons.exceptions as BotExceptions  # addons/exceptions.py
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 import traceback
 
 load_dotenv()
@@ -53,7 +53,7 @@ async def on_ready():  # Print bot info on ready
 
 
 # Build detailed error info and optionally include traceback
-async def error_builder(ctx, error, tb=False):
+def error_builder(ctx, error, tb=False):
     if tb:
         error_traceback = f"""
     User: {ctx.author} ({ctx.author.id})
@@ -80,44 +80,55 @@ Traceback:
 @bot.event
 async def on_application_command_error(ctx, error):
     error = getattr(error, 'original', error)
-    error_traceback = await error_builder(ctx, error, tb=True)
-    with open("logs/bot_errors.log", "a") as log_file:
-        log_file.write(error_traceback + "\n")
 
-    error_info = await error_builder(ctx, error, tb=False)
+    if isinstance(error, discord.NotFound) and error.code == 10062:
+        # I have come to terms with the fact that I can't fight Discord's API
+        return
+    error_traceback = error_builder(ctx, error, tb=True)
+    logger.error(error_traceback)
+
+    error_info = error_builder(ctx, error, tb=False)
     print(
         f"""
     !! | An error occurred.
     {error_info}""")
 
-    try:
-        if isinstance(error, commands.NotOwner):
-            return
-        elif isinstance(error, commands.CommandNotFound):
-            return
-        elif isinstance(error, BotExceptions.InstanceNotConfigured):
-            extra = f" details: {error}" if str(error) else ""
-            await ctx.respond(f"this instance of the bot is not properly configured. please contact the instance's administrator." + extra, ephemeral=True)
-        elif isinstance(error, (commands.MissingPermissions, commands.BotMissingPermissions)):
-            await ctx.respond(f"looks like you don't have the permissions to run this command :p")
-        elif isinstance(error, discord.Forbidden):
-            await ctx.respond(f"i don't have the permissions to do that, sorry")
-        elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.respond(f"looks like you missed an argument: {error}\nUsage: `{ctx.command.usage}`" if ctx.command.usage else f"looks like you're missing an argument: {error}")
-        elif isinstance(error, commands.BadArgument):
-            await ctx.respond(f"idk what are you trying to do but you input an invalid argument: {error}")
-        elif isinstance(error, commands.CommandOnCooldown):
-            await ctx.respond(f"chill out! you're on cooldown; try again in {error.retry_after:.1f} seconds.")
-        elif isinstance(error, discord.NotFound):
-            await ctx.respond(f"whoops, can't find what you're looking for :b")
-        elif isinstance(error, discord.DiscordException):
-            await ctx.respond(f"discord's acting up as always. try again later! (Debug info: {error})")
-        else:
-            await ctx.respond(f"discord's got something. plz notify this error! (Debug info: {error})")
-    except discord.HTTPException:
+    if not ctx.response.is_done():
         try:
-            await ctx.respond("An error occurred while processing the command.", ephemeral=True)
-        except Exception as e:
-            print("✗ | Couldn't send the error message to Discord.")
+            if isinstance(error, discord.NotFound):
+                await ctx.respond(f"whoops, can't find what you're looking for :b")
+            elif isinstance(error, commands.NotOwner):
+                return
+            elif isinstance(error, commands.CommandNotFound):
+                return
+            elif isinstance(error, BotExceptions.InstanceNotConfigured):
+                extra = f" details: {error}" if str(error) else ""
+                await ctx.respond(f"this instance of the bot is not properly configured. please contact the instance's administrator." + extra, ephemeral=True)
+            elif isinstance(error, (commands.MissingPermissions, commands.BotMissingPermissions)):
+                await ctx.respond(f"looks like you don't have the permissions to run this command :p")
+            elif isinstance(error, discord.Forbidden):
+                await ctx.respond(f"i don't have the permissions to do that, sorry")
+            elif isinstance(error, commands.MissingRequiredArgument):
+                await ctx.respond(f"looks like you missed an argument: {error}\nUsage: `{ctx.command.usage}`" if ctx.command.usage else f"looks like you're missing an argument: {error}")
+            elif isinstance(error, commands.BadArgument):
+                await ctx.respond(f"idk what are you trying to do but you input an invalid argument: {error}")
+            elif isinstance(error, commands.CommandOnCooldown):
+                await ctx.respond(f"chill out! you're on cooldown; try again in {error.retry_after:.1f} seconds.")
+            elif isinstance(error, discord.DiscordException):
+                await ctx.respond(f"discord's acting up as always. try again later! (Debug info: {error})")
+            else:
+                await ctx.respond(f"discord's got something. plz notify this error! (Debug info: {error})")
+        except discord.HTTPException:
+            try:
+                await ctx.respond("An error occurred while processing the command.", ephemeral=True)
+            except Exception as e:
+                print("✗ | Couldn't send the error message to Discord.")
 
-bot.run(os.getenv("TOKEN"))
+try:
+    bot.run(os.getenv("TOKEN"))
+except discord.LoginFailure as e:
+    logger.critical(f"Failed to authenticate: {e}")
+    print("✗ | Invalid or missing token. Check your .env file.")
+except Exception as e:
+    logger.critical(f"Failed to start the bot: {e}")
+    print(f"✗ | Failed to start the bot: {e}")
