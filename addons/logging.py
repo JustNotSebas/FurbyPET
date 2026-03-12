@@ -1,7 +1,7 @@
 import os
 import logging
 from logging.handlers import TimedRotatingFileHandler
-from discord.ext import commands
+
 # Set up logger
 logger = logging.getLogger('discord_bot')
 logger.setLevel(logging.ERROR)
@@ -25,8 +25,3 @@ formatter = logging.Formatter(
 )
 file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
-
-# Command Exception Catcher placeholder
-class InstanceNotConfigured(commands.CommandError):
-    pass
-
