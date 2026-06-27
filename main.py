@@ -1,22 +1,45 @@
 import discord
-from discord.ext import commands
-from dotenv import load_dotenv
 import pytz
-from addons.logging import logger  # addons/logging.py
-import addons.exceptions as BotExceptions  # addons/exceptions.py
+import traceback
 import os
 from datetime import datetime
-import traceback
+from discord.ext import commands
+from addons.logging import logger  # addons/logging.py
+import addons.exceptions as BotExceptions  # addons/exceptions.py
+from dotenv import load_dotenv, dotenv_values
 
 load_dotenv()
 
 bot = commands.Bot(intents=discord.Intents.default(), auto_sync_commands=True)
-bot.tz = pytz.timezone(os.getenv("TIMEZONE"))
-bot.start_time = datetime.now(bot.tz)
 
 extensions = [  # Auto-load all command files in cmds/ directory
     f"cmds.{file[:-3]}" for file in os.listdir("cmds") if file.endswith(".py")
 ]
+
+
+def env_check():
+    missing_opt, missing_req = [], []
+    critical = {"TOKEN"}
+    for key, value in dotenv_values(".env").items():
+        if not value:
+            if key in critical:
+                missing_req.append(key)
+            else:
+                missing_opt.append(key)
+    if missing_opt:
+        logger.warning(
+            f"Missing optional variable(s): {', '.join(missing_opt)}")
+        print("!! | One or more environment variables are empty. Bot might not function correctly.")
+        for key in missing_opt:
+            print(f"- {key}")
+    if missing_req:
+        logger.critical(
+            f"Missing critical variable(s): {', '.join(missing_req)}")
+        print("!!! | At least one critical environment variable is missing.")
+        for key in missing_req:
+            print(f"- {key}")
+        print("!!! | Aborting startup.")
+        raise SystemExit(1)
 
 
 @bot.event
@@ -28,6 +51,8 @@ async def on_connect():  # Load extensions and print bot info on connect
     ID: {bot.user.id}
         """)
     if not hasattr(bot, 'synced'):
+        bot.tz = pytz.timezone(os.getenv("TIMEZONE") or "UTC")
+        bot.start_time = datetime.now(bot.tz)
         if extensions:
             print("★ | Loading extensions...")
             for ext in extensions:
@@ -51,8 +76,9 @@ async def on_ready():  # Print bot info on ready
         print(f"- {guild.name} (ID: {guild.id})")
     print(f"✓ | Ready! Ping: {round(bot.latency * 1000)}ms")
 
-
 # Build detailed error info and optionally include traceback
+
+
 def error_builder(ctx, error, tb=False):
     if tb:
         error_traceback = f"""
@@ -68,11 +94,11 @@ Traceback:
         return error_traceback
 
     error_info = f"""
-    Date: {datetime.now(bot.tz).strftime('%Y-%m-%d %H:%M:%S %Z')}          
+    Date: {datetime.now(getattr(bot, 'tz', pytz.utc)).strftime('%Y-%m-%d %H:%M:%S %Z')}          
     User: {ctx.author}
     Executed in: {ctx.guild.name or "Unknown Guild / DM" if ctx.guild else "DM"} ({ctx.guild.id if ctx.guild else 'N/A'})
     Command: {ctx.command.qualified_name if ctx.command else 'Unknown'}
-    Error: {type(error).__module__}.{type(error).__name__}
+    Error: {type(error).__module__}.{type(error).__name__}: {str(error)}
     """
     return error_info
 
@@ -125,10 +151,11 @@ async def on_application_command_error(ctx, error):
                 print("✗ | Couldn't send the error message to Discord.")
 
 try:
+    env_check()
     bot.run(os.getenv("TOKEN"))
 except discord.LoginFailure as e:
     logger.critical(f"Failed to authenticate: {e}")
-    print("✗ | Invalid or missing token. Check your .env file.")
+    print("✗ | Invalid token. Check your .env file.")
 except Exception as e:
     logger.critical(f"Failed to start the bot: {e}")
     print(f"✗ | Failed to start the bot: {e}")

@@ -14,8 +14,6 @@ def petpet_gen(avatar_bytes: bytes) -> BytesIO:
     try:
         petting.make(source, dest)
         dest.seek(0)
-    except Exception as e:
-        raise Exception(f"Failed to generate petpet GIF: {e}") from e
     finally:
         source.close()  # always runs, success or not
     return dest
@@ -45,8 +43,6 @@ def bonk_gen(avatar_bytes: bytes) -> BytesIO:
         output = BytesIO()  # output container
         composite.save(output, format="PNG")  # save as PNG
         output.seek(0)  # reset pointer to start
-    except Exception as e:
-        raise Exception(f"Failed to generate bonk image: {e}") from e
     finally:
         for obj in [image, background, overlay, composite]:
             if obj:
@@ -98,9 +94,6 @@ def explosion_gen(avatar_bytes: bytes) -> BytesIO:
             disposal=2
         )
         output.seek(0)
-
-    except Exception as e:
-        raise Exception(f"Failed to generate explosion overlay: {e}") from e
     finally:
         for obj in [image, avatar, explosion_gif, explosion_frame] + frames:
             if obj:

@@ -46,7 +46,7 @@ class Avatars(commands.Cog, ):
                 filename = "_explosion.gif"
                 content = "WENT BOOM!"
             else:  # Should ideally not be reached
-                await ctx.respond("Looks like there was an error :[ (Debug info: Unknown avatar effect)", ephemeral=True)
+                await ctx.respond("looks like there was an error :[ (Debug info: Unknown avatar effect)", ephemeral=True)
                 return
             # calls the corresponding function in image_processing.py
             output = generator_func(avatar_bytes)
@@ -67,37 +67,31 @@ class Avatars(commands.Cog, ):
     async def petpet_user_command(self, ctx: discord.ApplicationContext, user: discord.User):
         await ctx.defer()
         await self._generate_media(ctx, user, petpet_gen, 'petpet')
-        print(f"{ctx.author} pet {user}!")
 
     @commands.message_command(name="Pet the user!", integration_types=DEFAULT)
     async def petpet_msg_command(self, ctx: discord.ApplicationContext, message: discord.Message):
         await ctx.defer()
         await self._generate_media(ctx, message, petpet_gen, 'petpet')
-        print(f"{ctx.author} pet {message.author}!")
 
     @commands.user_command(name="Explode the user!", integration_types=DEFAULT)
     async def explosion_user_command(self, ctx: discord.ApplicationContext, user: discord.User):
         await ctx.defer()
         await self._generate_media(ctx, user, explosion_gen, 'explosion')
-        print(f"{ctx.author} exploded {user}!")
 
     @commands.message_command(name="Explode the user!", integration_types=DEFAULT)
     async def explosion_msg_command(self, ctx: discord.ApplicationContext, message: discord.Message):
         await ctx.defer()
         await self._generate_media(ctx, message, explosion_gen, 'explosion')
-        print(f"{ctx.author} exploded {message.author}!")
 
     @commands.user_command(name="Bonk the user!", integration_types=DEFAULT)
     async def bonk_user_command(self, ctx: discord.ApplicationContext, user: discord.User):
         await ctx.defer()
         await self._generate_media(ctx, user, bonk_gen, 'bonk')
-        print(f"{ctx.author} bonked {user}!")
 
     @commands.message_command(name="Bonk the user!", integration_types=DEFAULT)
     async def bonk_msg_command(self, ctx: discord.ApplicationContext, message: discord.Message):
         await ctx.defer()
         await self._generate_media(ctx, message, bonk_gen, 'bonk')
-        print(f"{ctx.author} bonked {message.author}!")
 
 
 def setup(bot):
