@@ -9,12 +9,12 @@ logger.setLevel(logging.ERROR)
 # Create logs directory if it doesn't exist
 os.makedirs('logs', exist_ok=True)
 
-# Rotating file handler - rotates monthly
+# Rotating file handler - rotates weekly, supposedly
 file_handler = TimedRotatingFileHandler(
     filename='logs/bot_errors.log',
     when='midnight',
-    interval=30,
-    backupCount=12,
+    interval=7,
+    backupCount=2,
     encoding='utf-8'
 )
 
